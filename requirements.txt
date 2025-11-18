@@ -1,0 +1,18 @@
+# Core dependencies
+anthropic>=0.18.0
+pydantic>=2.0.0
+scikit-learn>=1.3.0
+openml>=0.14.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Optional: For benchmarking
+# Uncomment if needed
+# tpot>=0.12.0
+# scipy>=1.10.0
+
+# Development dependencies (install with: pip install -e ".[dev]")
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=23.0.0
+# ruff>=0.1.0
