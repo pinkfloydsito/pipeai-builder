@@ -1,0 +1,10 @@
+[project]
+name = "pipeai-builder"
+version = "0.1.0"
+description = "AutoML Pipeline Builder"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openml>=0.15.1",
+    "scikit-learn>=1.7.2",
+]
