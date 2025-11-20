@@ -6,10 +6,10 @@ openml>=0.14.0
 numpy>=1.24.0
 pandas>=2.0.0
 
-# Optional: For benchmarking
-# Uncomment if needed
-# tpot>=0.12.0
-# scipy>=1.10.0
+# Benchmarking dependencies
+optuna>=3.0.0
+scipy>=1.10.0
+# tpot>=0.12.0  # Optional: for TPOT comparison
 
 # Development dependencies (install with: pip install -e ".[dev]")
 # pytest>=7.0.0
