@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Dict
 import numpy as np
 import openml
+from sklearn.preprocessing import LabelEncoder
 
 
 @dataclass
@@ -63,7 +64,10 @@ def extract_dataset_info(dataset_id: int) -> DatasetInfo:
     missing_pct = (X.isna().sum().sum() / (n_samples * n_features)) * 100
 
     # Class imbalance (lower = more imbalanced)
-    class_counts = np.bincount(y.astype(int))
+    # Encode categorical labels to integers if needed
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y)
+    class_counts = np.bincount(y_encoded)
     imbalance_ratio = class_counts.min() / class_counts.max()
 
     return DatasetInfo(
