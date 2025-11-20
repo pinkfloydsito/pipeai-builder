@@ -61,6 +61,8 @@ class PipelineDesigner:
         """
         prompt = self._build_prompt(dataset_info, n_examples)
         response = self._call_llm(prompt)
+
+        self.logger.debug(f"JSON response: {response}")
         design = PipelineDesign(**response)
 
         self.logger.info(
