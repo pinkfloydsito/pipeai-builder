@@ -79,7 +79,7 @@ def extract_dataset_info(dataset_id: int) -> DatasetInfo:
         feature_types=feature_types,
         missing_value_pct=missing_pct,
         class_imbalance_ratio=imbalance_ratio,
-        domain=dataset.tag.split(',')[0] if dataset.tag else 'general',
+        domain=dataset.tag[0] if dataset.tag and len(dataset.tag) > 0 else 'general',
         description=dataset.description[:200] if dataset.description else ""
     )
 
