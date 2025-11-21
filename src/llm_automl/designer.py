@@ -60,6 +60,7 @@ class PipelineDesigner:
             Validated pipeline design
         """
         prompt = self._build_prompt(dataset_info, n_examples)
+        self.logger.debug(f"prompt: {prompt}")
         response = self._call_llm(prompt)
 
         self.logger.debug(f"JSON response: {response}")
