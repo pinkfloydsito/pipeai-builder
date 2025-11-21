@@ -57,8 +57,8 @@ def extract_dataset_info(dataset_id: int) -> DatasetInfo:
     n_classes = len(np.unique(y))
 
     feature_types = {
-        'categorical': sum(categorical_indicator),
-        'numerical': n_features - sum(categorical_indicator)
+        "categorical": sum(categorical_indicator),
+        "numerical": n_features - sum(categorical_indicator),
     }
 
     missing_pct = (X.isna().sum().sum() / (n_samples * n_features)) * 100
@@ -79,8 +79,8 @@ def extract_dataset_info(dataset_id: int) -> DatasetInfo:
         feature_types=feature_types,
         missing_value_pct=missing_pct,
         class_imbalance_ratio=imbalance_ratio,
-        domain=dataset.tag[0] if dataset.tag and len(dataset.tag) > 0 else 'general',
-        description=dataset.description[:200] if dataset.description else ""
+        domain=dataset.tag[0] if dataset.tag and len(dataset.tag) > 0 else "general",
+        description=dataset.description[:1000] if dataset.description else "",
     )
 
 
