@@ -74,33 +74,62 @@ class PipelineDesigner:
         return design
 
     def _build_prompt(self, dataset_info: DatasetInfo, n_examples: int) -> str:
-        """Construct prompt with system instructions and examples."""
+        """Construct prompt with system instructions, algorithm search space, and examples."""
         system_prompt = """You are an expert ML engineer designing AutoML pipelines.
-
-IMPORTANT: Preprocessing is handled already. You only design:
-1. Feature engineering (optional)
-2. Model selection
-3. Hyperparameters
-
-Default preprocessing (already applied):
-- Missing value imputation (mean for numeric, most_frequent for categorical)
-- StandardScaler for numeric features
-- OneHotEncoder for categorical features
-
-Your task:
-1. Design feature engineering steps if beneficial (polynomial features, feature selection, etc.)
-2. Select the best model for the dataset characteristics
-3. Provide sensible hyperparameters
-4. Explain your reasoning
-
-Respond with ONLY valid JSON:
-{
-  "feature_engineering": [{"name": "PolynomialFeatures", "operation": "polynomial", "parameters": {"degree": 2}}],
-  "model": {"type": "RandomForestClassifier", "hyperparameters": {"n_estimators": 100, "max_depth": 10}},
-  "rationale": "Explanation of feature engineering and model choices..."
-}
-
-Note: feature_engineering can be an empty list [] if not needed."""
+    
+    IMPORTANT: Preprocessing is handled already. You only design:
+    1. Feature engineering (optional)
+    2. Model selection
+    3. Hyperparameters
+    
+    Default preprocessing (already applied):
+    - Missing value imputation (mean for numeric, most_frequent for categorical)
+    - StandardScaler for numeric features
+    - OneHotEncoder for categorical features
+    
+    AVAILABLE ALGORITHMS SEARCH SPACE:
+    ----------------------------------
+    For Classification tasks:
+    - LogisticRegression: {"C": [0.001, 0.01, 0.1, 1, 10, 100], "penalty": ["l1", "l2", "elasticnet", "none"], "solver": ["lbfgs", "liblinear", "saga"]}
+    - RandomForestClassifier: {"n_estimators": [50, 100, 200, 500], "max_depth": [None, 3, 5, 10, 20], "min_samples_split": [2, 5, 10], "max_features": ["sqrt", "log2", None]}
+    - GradientBoostingClassifier: {"n_estimators": [50, 100, 200], "learning_rate": [0.01, 0.1, 0.2], "max_depth": [3, 5, 10], "subsample": [0.8, 0.9, 1.0]}
+    - SVC: {"C": [0.1, 1, 10, 100], "kernel": ["linear", "poly", "rbf", "sigmoid"], "gamma": ["scale", "auto", 0.001, 0.01, 0.1]}
+    - XGBClassifier: {"n_estimators": [50, 100, 200], "learning_rate": [0.01, 0.1, 0.2], "max_depth": [3, 5, 8, 10], "subsample": [0.6, 0.8, 1.0]}
+    
+    
+    AVAILABLE FEATURE ENGINEERING OPERATIONS:
+    -----------------------------------------
+    - polynomial: Creates polynomial and interaction features (parameters: {"degree": [2, 3]})
+    - feature_selection: Selects most important features (parameters: {"method": ["univariate", "model_based"], "k_features": ["auto", 0.8, 0.9, 10, 20]})
+    - pca: Dimensionality reduction (parameters: {"n_components": ["auto", 0.95, 0.99, 10, 50]})
+    - binning: Converts numerical features to categorical (parameters: {"n_bins": [3, 5, 10], "strategy": ["uniform", "quantile", "kmeans"]})
+    - interaction_terms: Creates interaction terms between features (parameters: {})
+    - no_feature_engineering: Use empty list [] if no feature engineering is beneficial
+    
+    YOUR TASK:
+    1. Based on the dataset characteristics, decide if feature engineering would be beneficial
+    2. Select the most appropriate model type for the problem
+    3. Choose sensible hyperparameters from the search space above
+    4. Explain your reasoning considering dataset size, feature types, and problem complexity
+    
+    Respond with ONLY valid JSON:
+    {
+      "feature_engineering": [
+        {"name": "PolynomialFeatures", "operation": "polynomial", "parameters": {"degree": 2}},
+        {"name": "SelectKBest", "operation": "feature_selection", "parameters": {"method": "univariate", "k_features": 10}}
+      ],
+      "model": {
+        "type": "RandomForestClassifier", 
+        "hyperparameters": {
+          "n_estimators": 100, 
+          "max_depth": 10,
+          "max_features": "sqrt"
+        }
+      },
+      "rationale": "I chose polynomial features because the dataset shows non-linear relationships. Random Forest was selected as it handles the medium-sized dataset well and is robust to outliers. Feature selection helps reduce noise from the 50 input features."
+    }
+    
+    Note: feature_engineering can be an empty list [] if not needed."""
 
         examples_text = ""
         if self.few_shot_examples and n_examples > 0:
