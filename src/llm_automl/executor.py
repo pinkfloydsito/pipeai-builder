@@ -6,19 +6,28 @@ Uses a fixed default preprocessing pipeline for all models.
 import logging
 from typing import Dict, Any
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures, KBinsDiscretizer
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.feature_selection import SelectKBest, f_classif, SelectFromModel
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 
+# Optional: XGBoost (may not be installed)
+try:
+    from xgboost import XGBClassifier
+    HAS_XGBOOST = True
+except ImportError:
+    HAS_XGBOOST = False
+    XGBClassifier = None
+
 from .schemas import PipelineDesign
 
 
-# Model registry
+# Model registry - matches designer.py prompt
 MODEL_MAP = {
     'RandomForestClassifier': RandomForestClassifier,
     'GradientBoostingClassifier': GradientBoostingClassifier,
@@ -26,10 +35,24 @@ MODEL_MAP = {
     'SVC': SVC,
 }
 
-# Feature engineering registry
+# Add XGBoost if available
+if HAS_XGBOOST:
+    MODEL_MAP['XGBClassifier'] = XGBClassifier
+
+# Feature engineering registry - matches designer.py prompt
+# Maps both class names and operation names to classes
 FEATURE_ENG_MAP = {
+    # Class names
     'PolynomialFeatures': PolynomialFeatures,
     'SelectKBest': SelectKBest,
+    'SelectFromModel': SelectFromModel,
+    'PCA': PCA,
+    'KBinsDiscretizer': KBinsDiscretizer,
+    # Operation names (from designer prompt)
+    'polynomial': PolynomialFeatures,
+    'feature_selection': SelectKBest,  # Default to univariate
+    'pca': PCA,
+    'binning': KBinsDiscretizer,
 }
 
 
@@ -117,8 +140,8 @@ class PipelineExecutor:
         Create sklearn feature engineering component from name and parameters.
 
         Args:
-            name: Component class name
-            params: Initialization parameters
+            name: Component class name or operation name
+            params: Initialization parameters (may need translation)
 
         Returns:
             Instantiated sklearn component
@@ -129,7 +152,55 @@ class PipelineExecutor:
         if name not in FEATURE_ENG_MAP:
             raise ValueError(f"Unknown feature engineering: {name}. Available: {list(FEATURE_ENG_MAP.keys())}")
 
-        return FEATURE_ENG_MAP[name](**params)
+        component_class = FEATURE_ENG_MAP[name]
+        translated_params = self._translate_feature_params(name, params)
+
+        return component_class(**translated_params)
+
+    def _translate_feature_params(self, name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Translate designer prompt parameter names to sklearn parameter names.
+
+        Args:
+            name: Component/operation name
+            params: Parameters from LLM designer
+
+        Returns:
+            Translated parameters for sklearn
+        """
+        result = params.copy()
+
+        # SelectKBest / feature_selection translations
+        if name in ('SelectKBest', 'feature_selection'):
+            # k_features -> k
+            if 'k_features' in result:
+                k_val = result.pop('k_features')
+                if k_val == 'auto':
+                    result['k'] = 10  # Default
+                elif isinstance(k_val, float) and k_val < 1:
+                    result['k'] = 'all'  # Will select percentage later
+                else:
+                    result['k'] = k_val
+            # Add default score function
+            if 'score_func' not in result:
+                result['score_func'] = f_classif
+            # Remove method param (not used by SelectKBest)
+            result.pop('method', None)
+
+        # PCA translations
+        elif name in ('PCA', 'pca'):
+            if 'n_components' in result:
+                n_comp = result['n_components']
+                if n_comp == 'auto':
+                    result['n_components'] = 0.95  # Keep 95% variance
+
+        # KBinsDiscretizer / binning translations
+        elif name in ('KBinsDiscretizer', 'binning'):
+            # Ensure encode is set for sklearn compatibility
+            if 'encode' not in result:
+                result['encode'] = 'ordinal'
+
+        return result
 
 
 def add_model(name: str, model_class):
