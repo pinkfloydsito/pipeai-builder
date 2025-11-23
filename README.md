@@ -75,6 +75,15 @@ The benchmark generates the following outputs in the specified output directory:
 - `benchmark_results.csv`: Complete results with all metrics for each dataset and approach
 - `pipelines/`: Directory containing JSON files with pipeline configurations for each run
 
+## Notebooks
+
+The `notebooks/` directory contains Jupyter notebooks for exploring and analyzing results:
+
+- `gpt_generated_pipeline.ipynb`: Demonstrates the GPT-generated pipeline approach and includes detailed analysis of results
+- `statistical_testing.ipynb`: Statistical tests comparing the different AutoML approaches
+
+These notebooks provide an interactive way to explore the benchmark results and reproduce the analysis.
+
 ### Metrics
 
 Each run records:
