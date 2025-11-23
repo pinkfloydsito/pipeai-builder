@@ -1,8 +1,3 @@
-"""
-LLM-based pipeline designer.
-Supports DeepSeek and OpenAI APIs.
-"""
-
 import json
 import logging
 from typing import Dict, List, Any, Optional, Literal

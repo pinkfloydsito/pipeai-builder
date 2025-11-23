@@ -123,9 +123,7 @@ class BenchmarkRunner:
 
         # Cross-validation
         start_time = time.time()
-        cv_scores = cross_val_score(
-            model, X_train, y_train, cv=5, scoring="balanced_accuracy", n_jobs=-1
-        )
+        cv_scores = cross_val_score(model, X_train, y_train, cv=5, scoring="f1_weighted", n_jobs=-1)
 
         # Train and evaluate
         model.fit(X_train, y_train)
@@ -162,16 +160,15 @@ class BenchmarkRunner:
         """Run TPOT AutoML."""
         print(f"  Running TPOT AutoML (max_time: {self.tpot_max_time_mins}min)...")
 
-        # TPOT 1.1.0 API - use n_jobs=1 to avoid Dask distributed issues
         tpot = TPOTClassifier(
             search_space="linear-light",  # Faster search space
-            scorers=["balanced_accuracy"],
+            scorers=["f1_weighted"],
             cv=5,
             max_time_mins=self.tpot_max_time_mins,
             max_eval_time_mins=1,
             random_state=42,
             verbose=0,
-            n_jobs=1,  # Single-threaded to avoid Dask issues
+            n_jobs=1,
         )
 
         start_time = time.time()
@@ -179,14 +176,14 @@ class BenchmarkRunner:
         optim_time = time.time() - start_time
 
         # Get best pipeline info
-        pipeline_str = str(tpot.fitted_pipeline_) if hasattr(tpot, 'fitted_pipeline_') else "N/A"
+        pipeline_str = str(tpot.fitted_pipeline_) if hasattr(tpot, "fitted_pipeline_") else "N/A"
 
         # Try to extract model type from pipeline
         model_type = "TPOTPipeline"
-        if hasattr(tpot, 'fitted_pipeline_') and tpot.fitted_pipeline_ is not None:
+        if hasattr(tpot, "fitted_pipeline_") and tpot.fitted_pipeline_ is not None:
             try:
                 # Get the last step (usually the classifier)
-                if hasattr(tpot.fitted_pipeline_, 'steps'):
+                if hasattr(tpot.fitted_pipeline_, "steps"):
                     steps = tpot.fitted_pipeline_.steps
                     if steps:
                         model_type = type(steps[-1][1]).__name__
@@ -197,7 +194,7 @@ class BenchmarkRunner:
 
         # Cross-validation scores
         cv_scores = cross_val_score(
-            tpot.fitted_pipeline_, X_train, y_train, cv=5, scoring="balanced_accuracy", n_jobs=-1
+            tpot.fitted_pipeline_, X_train, y_train, cv=5, scoring="f1_weighted", n_jobs=-1
         )
 
         # Evaluate
@@ -210,7 +207,10 @@ class BenchmarkRunner:
             dataset_name=dataset_name,
             approach="tpot",
             model_type=model_type,
-            hyperparameters={"search_space": "linear-light", "max_time_mins": self.tpot_max_time_mins},
+            hyperparameters={
+                "search_space": "linear-light",
+                "max_time_mins": self.tpot_max_time_mins,
+            },
             cv_accuracy_mean=cv_scores.mean(),
             cv_accuracy_std=cv_scores.std(),
             test_accuracy=accuracy_score(y_test, y_pred),
@@ -251,7 +251,7 @@ class BenchmarkRunner:
 
         # Cross-validation
         cv_scores = cross_val_score(
-            pipeline, X_train, y_train, cv=5, scoring="balanced_accuracy", n_jobs=-1
+            pipeline, X_train, y_train, cv=5, scoring="f1_weighted", n_jobs=-1
         )
 
         # Train and evaluate
@@ -319,9 +319,7 @@ class BenchmarkRunner:
 
         # TPOT AutoML
         try:
-            result = self.run_tpot(
-                dataset_id, dataset_info.name, X_train, y_train, X_test, y_test
-            )
+            result = self.run_tpot(dataset_id, dataset_info.name, X_train, y_train, X_test, y_test)
             results.append(result)
             print(
                 f"    ✓ TPOT: {result.test_balanced_accuracy:.4f} ({result.model_type}, time: {result.optimization_time:.1f}s)"
@@ -329,13 +327,12 @@ class BenchmarkRunner:
         except Exception as e:
             print(f"    ✗ TPOT failed: {e}")
             import traceback
+
             traceback.print_exc()
 
         # LLM Designer
         try:
-            result = self.run_llm(
-                dataset_id, dataset_info.name, X_train, y_train, X_test, y_test
-            )
+            result = self.run_llm(dataset_id, dataset_info.name, X_train, y_train, X_test, y_test)
             results.append(result)
             print(
                 f"    ✓ LLM: {result.test_balanced_accuracy:.4f} ({result.model_type}, time: {result.optimization_time:.1f}s)"
@@ -343,6 +340,7 @@ class BenchmarkRunner:
         except Exception as e:
             print(f"    ✗ LLM failed: {e}")
             import traceback
+
             traceback.print_exc()
 
         return results
@@ -354,7 +352,9 @@ class BenchmarkRunner:
         print("=" * 80)
         print("BENCHMARK: AutoML (TPOT) vs LLM Designer")
         print("=" * 80)
-        print(f"\nTPOT config: generations={self.tpot_generations}, population={self.tpot_population_size}, max_time={self.tpot_max_time_mins}min")
+        print(
+            f"\nTPOT config: generations={self.tpot_generations}, population={self.tpot_population_size}, max_time={self.tpot_max_time_mins}min"
+        )
         print(f"Datasets: {dataset_ids}")
 
         # Create output directory
@@ -377,6 +377,7 @@ class BenchmarkRunner:
             except Exception as e:
                 print(f"  ✗ Dataset {dataset_id} failed: {e}")
                 import traceback
+
                 traceback.print_exc()
                 continue
 
@@ -430,7 +431,11 @@ class BenchmarkRunner:
                     print(f"    - {step['name']}: {step['operation']}")
 
             if result.rationale:
-                rationale_preview = result.rationale[:200] + "..." if len(result.rationale) > 200 else result.rationale
+                rationale_preview = (
+                    result.rationale[:200] + "..."
+                    if len(result.rationale) > 200
+                    else result.rationale
+                )
                 print(f"  Rationale: {rationale_preview}")
 
             print(f"  Performance: {result.test_balanced_accuracy:.4f}")
@@ -448,12 +453,14 @@ class BenchmarkRunner:
         # Group by approach
         summary = (
             df.groupby("approach")
-            .agg({
-                "test_balanced_accuracy": ["mean", "std"],
-                "test_f1_macro": "mean",
-                "optimization_time": "mean",
-                "training_time": "mean",
-            })
+            .agg(
+                {
+                    "test_balanced_accuracy": ["mean", "std"],
+                    "test_f1_macro": "mean",
+                    "optimization_time": "mean",
+                    "training_time": "mean",
+                }
+            )
             .round(4)
         )
 
@@ -473,7 +480,9 @@ class BenchmarkRunner:
         win_counts = {"baseline": 0, "tpot": 0, "llm": 0}
         for dataset_name in df["dataset_name"].unique():
             dataset_results = df[df["dataset_name"] == dataset_name]
-            winner = dataset_results.loc[dataset_results["test_balanced_accuracy"].idxmax(), "approach"]
+            winner = dataset_results.loc[
+                dataset_results["test_balanced_accuracy"].idxmax(), "approach"
+            ]
             win_counts[winner] = win_counts.get(winner, 0) + 1
 
         print("\n\nOverall Win Counts:")
@@ -485,7 +494,9 @@ class BenchmarkRunner:
         print("\n\nTime Comparison (mean):")
         for approach in df["approach"].unique():
             approach_df = df[df["approach"] == approach]
-            total_time = approach_df["optimization_time"].mean() + approach_df["training_time"].mean()
+            total_time = (
+                approach_df["optimization_time"].mean() + approach_df["training_time"].mean()
+            )
             print(
                 f"  {approach:10s}: {total_time:.2f}s (opt: {approach_df['optimization_time'].mean():.2f}s, train: {approach_df['training_time'].mean():.2f}s)"
             )
@@ -501,7 +512,7 @@ def main():
         "--datasets",
         nargs="+",
         type=int,
-        default=[61, 101],  # Iris, Vehicle
+        default=[37, 61],
         help="OpenML dataset IDs",
     )
     parser.add_argument(
